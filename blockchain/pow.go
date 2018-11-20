@@ -64,7 +64,7 @@ func (pow *ProofOfWork) Run() (int, []byte) {
 
 }
 
-func (pow ProofOfWork) Validation() bool {
+func (pow ProofOfWork) Validate() bool {
 	var intHash big.Int
 
 	data := pow.InitData(pow.Block.Nonce)
