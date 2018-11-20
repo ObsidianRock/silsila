@@ -12,15 +12,14 @@ const (
 )
 
 type BlockChain struct {
-	LashHash []byte
+	LastHash []byte
 	Database *badger.DB
 }
 
 type BlockChainIterator struct {
-	CurrentHash []byte 
-	Database *badger.DB
+	CurrentHash []byte
+	Database    *badger.DB
 }
-
 
 func InitBlockChain() *BlockChain {
 	var lastHash []byte
@@ -34,7 +33,7 @@ func InitBlockChain() *BlockChain {
 		log.Panic(err)
 	}
 
-	err = db.Update(func(txn *badger.Txn) err {
+	err = db.Update(func(txn *badger.Txn) error {
 		if _, err := txn.Get([]byte("lh")); err == badger.ErrKeyNotFound {
 
 			fmt.Println("NO Preexisting Blockchain found")
@@ -47,7 +46,7 @@ func InitBlockChain() *BlockChain {
 			}
 
 			err = txn.Set([]byte("lh"), genesis.Hash)
-			lashHash = genesis.Hash
+			lastHash = genesis.Hash
 
 			return err
 		} else {
@@ -55,7 +54,7 @@ func InitBlockChain() *BlockChain {
 			if err != nil {
 				log.Panic(err)
 			}
-			lashHash, err := item.Value()
+			lastHash, err = item.ValueCopy(nil)
 			return err
 		}
 	})
@@ -64,22 +63,21 @@ func InitBlockChain() *BlockChain {
 		log.Panic(err)
 	}
 
-	blockChain := Blockchain{lashHash, db}
+	blockChain := BlockChain{lastHash, db}
 	return &blockChain
 }
 
-
 func (chain *BlockChain) AddBlock(data string) {
-	var lastHash []byte 
+	var lastHash []byte
 
-	err := chain.Database.View(func(txn *badget.Txn) err {
+	err := chain.Database.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte("lh"))
 		if err != nil {
 			log.Panic(err)
 		}
-		
-		lastHash, err := item.Value()
-		return err 
+
+		lastHash, err = item.ValueCopy(nil)
+		return err
 	})
 
 	if err != nil {
@@ -99,8 +97,8 @@ func (chain *BlockChain) AddBlock(data string) {
 			log.Panic(err)
 		}
 
-		chain.lastHash = newBlock.Hash 
-		return err 
+		chain.LastHash = newBlock.Hash
+		return err
 
 	})
 
@@ -109,31 +107,31 @@ func (chain *BlockChain) AddBlock(data string) {
 	}
 }
 
-func (chain *BlockChain) Iterator() *BlockChainIterator{
+func (chain *BlockChain) Iterator() *BlockChainIterator {
 	iter := &BlockChainIterator{chain.LastHash, chain.Database}
 
-	return iter 
+	return iter
 }
 
 func (iter *BlockChainIterator) Next() *Block {
-	var block *Block 
+	var block *Block
 
-	err := 	iter.Database.View(func(txn *badger.Txn) error {
+	err := iter.Database.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(iter.CurrentHash)
 		if err != nil {
 			log.Panic(err)
 		}
-		
 
-		encodedBlock, err := item.Value()
-		block := Deserialize(encodedBlock)
-		return err 
+		encodedBlock, err := item.ValueCopy(nil)
+		block = Deserialize(encodedBlock)
+		return err
 	})
+
 	if err != nil {
 		log.Panic(err)
 	}
-	
-	item.CurrentHash = block.Prevhash
 
-	return block 
+	iter.CurrentHash = block.PrevHash
+
+	return block
 }
