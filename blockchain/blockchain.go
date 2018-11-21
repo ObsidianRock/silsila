@@ -30,7 +30,7 @@ func DBexists() bool {
 	if _, err := os.Stat(dbFile); os.IsNotExist(err) {
 		return false
 	}
-	return false
+	return true
 }
 
 func InitBlockChain(address string) *BlockChain {
