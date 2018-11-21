@@ -155,7 +155,7 @@ func (ws Wallets) GetWallet(address string) Wallet {
 	return *ws.Wallets[address]
 }
 
-func (ws *Wallets) GetAllAddress() []string {
+func (ws *Wallets) GetAllAddresses() []string {
 	var addresses []string
 
 	for address := range ws.Wallets {
