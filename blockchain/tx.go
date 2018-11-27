@@ -57,7 +57,7 @@ func (outs TxOutputs) Serialize() []byte {
 	return buffer.Bytes()
 }
 
-func (outs TxOutputs) DeserializeOutputs(data []byte) TxOutputs {
+func DeserializeOutputs(data []byte) TxOutputs {
 
 	var outputs TxOutputs
 	decode := gob.NewDecoder(bytes.NewReader(data))
