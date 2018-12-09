@@ -10,14 +10,40 @@ import (
 	"os"
 )
 
-const walletFile = "./tmp/wallets.data"
+const walletFile = "./tmp/wallets_%s.data"
 
 type Wallets struct {
 	Wallets map[string]*Wallet
 }
 
-func (ws *Wallets) SaveFile() {
+func (ws *Wallets) LoadFile(nodeId string) error {
+	walletFile := fmt.Sprintf(walletFile, nodeId)
+	if _, err := os.Stat(walletFile); os.IsNotExist(err) {
+		return err
+	}
+
+	var wallets Wallets
+
+	fileContent, err := ioutil.ReadFile(walletFile)
+	if err != nil {
+		return err
+	}
+
+	gob.Register(elliptic.P256())
+	decoder := gob.NewDecoder(bytes.NewReader(fileContent))
+	err = decoder.Decode(&wallets)
+	if err != nil {
+		return err
+	}
+
+	ws.Wallets = wallets.Wallets
+
+	return nil
+}
+
+func (ws *Wallets) SaveFile(nodeId string) {
 	var content bytes.Buffer
+	walletFile := fmt.Sprintf(walletFile, nodeId)
 
 	gob.Register(elliptic.P256())
 
@@ -31,39 +57,6 @@ func (ws *Wallets) SaveFile() {
 	if err != nil {
 		log.Panic(err)
 	}
-}
-
-func (ws *Wallets) LoadFile() error {
-
-	if _, err := os.Stat(walletFile); os.IsNotExist(err) {
-		return err
-	}
-
-	var wallets Wallets
-
-	fileContent, err := ioutil.ReadFile(walletFile)
-	if err != nil {
-		return err
-	}
-
-	gob.Register(elliptic.P256())
-
-	decoder := gob.NewDecoder(bytes.NewReader(fileContent))
-	err = decoder.Decode(&wallets)
-	if err != nil {
-		return err
-	}
-
-	ws.Wallets = wallets.Wallets
-	return nil
-}
-
-func CreateWallets() (*Wallets, error) {
-	wallets := Wallets{}
-	wallets.Wallets = make(map[string]*Wallet)
-
-	err := wallets.LoadFile()
-	return &wallets, err
 }
 
 func (ws Wallets) GetWallet(address string) Wallet {
@@ -86,4 +79,13 @@ func (ws *Wallets) AddWallet() string {
 	ws.Wallets[address] = wallet
 
 	return address
+}
+
+func CreateWallets(nodeId string) (*Wallets, error) {
+	wallets := Wallets{}
+	wallets.Wallets = make(map[string]*Wallet)
+
+	err := wallets.LoadFile(nodeId)
+
+	return &wallets, err
 }
