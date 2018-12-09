@@ -3,8 +3,18 @@ package network
 import (
 	"fmt"
 	"os"
-	"sys"
+	"syscall"
+	"net"
+	"runtime"
+	"encoding/gob"
+	"encoding/hex"
+	"log"
+	"io/ioutil"
+	"bytes"
+	"io"
 
+	
+	"gopkg.in/vrecan/death.v3"
 	"github.com/ObsidianRock/silsila/blockchain"
 )
 
@@ -16,7 +26,7 @@ const (
 
 var (
 	nodeAddress     string
-	minerAddress    string
+	mineAddress    string
 	KnownNodes      = []string{"localhost:3000"}
 	blocksInTransit = [][]byte{}
 	memoryPool      = make(map[string]blockchain.Transaction)
@@ -36,8 +46,9 @@ type GetBlocks struct {
 }
 
 type GetData struct {
-	AddrFrom []string
+	AddrFrom string
 	Type     string
+	ID []byte
 }
 
 type Inv struct {
@@ -102,26 +113,6 @@ func GobEncode(data interface{}) []byte {
 	return buff.Bytes()
 }
 
-func HandleConnection(conn net.Conn,chain *blockchain.BlockChain){
-
-	req, err := ioutil.ReadAll(conn)
-	defer conn.Close()
-
-	if err != nil {
-		log.Panic(err)
-	}
-
-	command := BytesToCmd(req[:commandLength])
-	fmt.Printf("Received %s command\n", command)
-
-
-	switch command {
-	case Default:
-		fmt.Printf("Unknown Command")
-	}
-
-}
-
 func SendData(addr string, data []byte){
 
 	conn, err := net.Dial(protocol, addr)
@@ -151,10 +142,10 @@ func SendAddr(address string) {
 	nodes := Addr{KnownNodes}
 	nodes.AddrList = append(nodes.AddrList, nodeAddress)
 	payload := GobEncode(nodes)
-	request := append(CmdToBytes("addr", payload...)
-	sendData(address, request)
-}
+	request := append(CmdToBytes("addr"), payload...)
 
+	SendData(address, request)
+}
 func SendBlock(addr string, b *blockchain.Block) {
 	data := Block{nodeAddress, b.Serialize()}
 	payload := GobEncode(data)
